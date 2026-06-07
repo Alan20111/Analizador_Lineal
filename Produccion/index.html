@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Analizador Lineal — Demo (Alan Méndez)</title>
+<style>
+  body{margin:0;background:#0d1117;color:#e6edf3;font-family:'Segoe UI',system-ui,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 10px}
+  .lead{text-align:center;margin-bottom:12px}
+  .lead h1{font-size:1.2rem;margin:0}.lead p{color:#9aa7b8;font-size:.85rem;margin:3px 0 0}
+  .lead a{color:#5aa2ff;text-decoration:none}
+  /* Terminal */
+  .term{width:min(96vw,760px);background:#11141a;border:1px solid #2b2b2b;border-radius:8px;overflow:hidden;
+    box-shadow:0 18px 50px rgba(0,0,0,.55)}
+  .tbar{height:30px;background:#23262e;display:flex;align-items:center;gap:7px;padding:0 12px;border-bottom:1px solid #000}
+  .tbar i{width:12px;height:12px;border-radius:50%;display:inline-block}
+  .tbar i.r{background:#ff5f57}.tbar i.y{background:#febc2e}.tbar i.g{background:#28c840}
+  .tbar span{margin-left:8px;color:#9aa7b8;font-size:12.5px}
+  .screen{height:62vh;min-height:420px;overflow-y:auto;padding:12px 14px;
+    font-family:'Cascadia Code','Consolas','Courier New',monospace;font-size:13.5px;line-height:1.5;color:#d6e2c4;background:#0c0f14}
+  .screen .sys{color:#8fb4ff}.screen .ok{color:#7ee787}.screen .err{color:#ff7b72}.screen .warn{color:#e3b341}
+  .screen .you{color:#fff}.screen .mat{color:#9fd1ff;white-space:pre}
+  .inrow{display:flex;align-items:center;gap:8px;padding:8px 14px;background:#0c0f14;border-top:1px solid #1c2029}
+  .inrow .ps{color:#7ee787;font-family:monospace;font-size:13.5px}
+  .inrow input{flex:1;background:transparent;border:none;outline:none;color:#fff;
+    font-family:'Cascadia Code',monospace;font-size:13.5px}
+</style>
+</head>
+<body>
+  <div class="lead">
+    <h1>📐 Analizador Lineal</h1>
+    <p>Demo web fiel al proyecto Java de consola · escribe y presiona Enter, igual que en la terminal · <a href="https://portafolio-ten-olive-50.vercel.app/">← Volver al portafolio</a></p>
+  </div>
+
+  <div class="term">
+    <div class="tbar"><i class="r"></i><i class="y"></i><i class="g"></i><span>java -jar AnalizadorLineal.jar</span></div>
+    <div class="screen" id="scr"></div>
+    <div class="inrow"><span class="ps" id="ps">&gt;</span><input id="cmd" autocomplete="off" autofocus placeholder="escribe aquí y presiona Enter"></div>
+  </div>
+
+<script>
+const scr=document.getElementById('scr'), cmd=document.getElementById('cmd'), ps=document.getElementById('ps');
+function out(t,cls){const d=document.createElement('div');if(cls)d.className=cls;d.textContent=t;scr.appendChild(d);scr.scrollTop=scr.scrollHeight;}
+function echo(t){out('> '+t,'you');}
+
+/* ---------- Álgebra lineal ---------- */
+function parseVectores(line){
+  const re=/([A-Za-z]\w*)\s*<\s*(-?\d+(?:\.\d+)?(?:\s*,\s*-?\d+(?:\.\d+)?)*)\s*>/g;
+  const out=[];let m;while((m=re.exec(line))!==null){out.push({name:m[1],comps:m[2].split(',').map(s=>parseFloat(s.trim()))});}
+  return out;
+}
+function rref(M){
+  M=M.map(r=>r.slice());const rows=M.length,cols=M[0].length;let lead=0;
+  for(let r=0;r<rows;r++){
+    if(lead>=cols)break;let i=r;
+    while(Math.abs(M[i][lead])<1e-9){i++;if(i===rows){i=r;lead++;if(lead===cols)return M;}}
+    [M[i],M[r]]=[M[r],M[i]];const lv=M[r][lead];M[r]=M[r].map(x=>x/lv);
+    for(let k=0;k<rows;k++){if(k!==r){const f=M[k][lead];M[k]=M[k].map((x,j)=>x-f*M[r][j]);}}
+    lead++;
+  }
+  return M;
+}
+function rank(M){const R=rref(M);let rk=0;for(const row of R)if(row.some(x=>Math.abs(x)>1e-9))rk++;return rk;}
+function fmt(x){const r=Math.round(x);return Math.abs(x-r)<1e-9?String(r):x.toFixed(2);}
+function showMatrix(M){out(M.map(row=>'[ '+row.map(v=>fmt(v).padStart(6)).join('  ')+' ]').join('\n'),'mat');}
+
+/* construye matriz A (n x k) con vectores como columnas */
+function matrizA(vs){const n=vs[0].comps.length,k=vs.length;const A=[];
+  for(let i=0;i<n;i++){A.push([]);for(let j=0;j<k;j++)A[i].push(vs[j].comps[i]);}return A;}
+
+/* ---------- Estado / menú ---------- */
+let state='menu';
+const MENU=[
+  "","===== ANALIZADOR LINEAL =====",
+  "1. Combinación Lineal (Ax=b)",
+  "2. Dependencia Lineal (LI / LD)",
+  "3. Conjunto Generador (Span)",
+  "4. Verificar si es una Base",
+  "5. Analizador Universal (¡Reporte Completo!)",
+  "6. Salir","============================="];
+function menu(){MENU.forEach(l=>out(l,'sys'));out("Elige una opción: ",'sys');ps.textContent='opción>';state='menu';}
+
+function moduloHeader(t){t.forEach(l=>out(l,'sys'));ps.textContent='vectores>';}
+function checkCancel(line){if(line.trim().toLowerCase()==='cancelar'){out("Operación cancelada.",'warn');menu();return true;}return false;}
+function dims(vs){const n=vs[0].comps.length;if(vs.some(v=>v.comps.length!==n)){out("[ERROR] Todos los vectores deben tener la misma dimensión.",'err');return null;}return n;}
+
+function run(line){
+  if(state==='menu'){
+    const op=parseInt(line.trim(),10);
+    if(isNaN(op)){out("Error: Ingresa solo un número.",'err');menu();return;}
+    if(op===1){state='m1';moduloHeader(["","### Módulo 1: Análisis de Sistemas (Vectores) ###",
+      "GUÍA DE USO: Formato Vector  ->  W<w1,w2> V1<u1,u2> V2<v1,v2> ...",
+      "Escribe 'cancelar' para volver al menú.","-----------------------------------------------------",
+      "Introduce tu consulta: "]);}
+    else if(op===2){state='m2';moduloHeader(["","### Módulo 2: Dependencia Lineal (LI / LD) ###",
+      "Formato: V1<x,y> V2<x,y> V3<x,y> ...   (NO incluyas un vector 'W')",
+      "Escribe 'cancelar' para volver al menú.","-----------------------------------------------------",
+      "Introduce los vectores: "]);}
+    else if(op===3){state='m3';moduloHeader(["","### Módulo 3: Conjunto Generador (Span) ###",
+      "Determina si los vectores generan el espacio R^n.","Formato: V1<x,y> V2<x,y> ...   (NO incluyas 'W')",
+      "-----------------------------------------------------","Introduce los vectores: "]);}
+    else if(op===4){state='m4';moduloHeader(["","### Módulo 4: Verificar si es una Base ###",
+      "Determina si los vectores son LI y Generan R^n.","Formato: V1<x,y> V2<x,y> ...   (NO incluyas 'W')",
+      "-----------------------------------------------------","Introduce los vectores: "]);}
+    else if(op===5){state='m5';moduloHeader(["","### Módulo 5: Analizador Universal (Modo Mago) ###",
+      "Introduce: W<...> V1<...> V2<...>  -> reporte completo del sistema.",
+      "Escribe 'cancelar' para volver al menú.","-----------------------------------------------------","Introduce tu consulta: "]);}
+    else if(op===6){out("¡Hasta luego! Mantente bien despierto.",'sys');ps.textContent='(fin)';state='end';}
+    else{out("Opción no válida. Intenta de nuevo.",'err');menu();}
+    return;
+  }
+  if(state==='end'){menu();return;}
+  if(checkCancel(line))return;
+  const vs=parseVectores(line);
+  if(!vs.length){out("[ERROR] Formato no reconocido. Usa  Nombre<n1,n2,...>",'err');return;}
+
+  if(state==='m1'||state==='m5'){
+    // W es el primero (o el llamado W); resto columnas
+    let w=vs.find(v=>v.name.toUpperCase()==='W')||vs[0];
+    const cols=vs.filter(v=>v!==w);
+    if(!cols.length){out("[ERROR] Faltan vectores Vi para combinar.",'err');return;}
+    const n=dims(vs);if(n===null)return;
+    const A=matrizA(cols);const aug=A.map((row,i)=>row.concat(w.comps[i]));
+    out("--- Matriz Aumentada Construida ---",'sys');showMatrix(aug);
+    const R=rref(aug);out("--- Matriz Resuelta (Gauss-Jordan) ---",'sys');showMatrix(R);
+    const k=cols.length;const rA=rank(A),rAug=rank(aug);
+    out("\n--- Resultado del Análisis ---",'sys');
+    if(rAug>rA){out("❌ El sistema es INCONSISTENTE: W NO es combinación lineal de los vectores.",'err');}
+    else if(rA===k){out("✅ Solución ÚNICA: W SÍ es combinación lineal (coeficientes determinados).",'ok');}
+    else{out("♾️ Infinitas soluciones: W es combinación lineal (de múltiples formas).",'ok');}
+    if(state==='m5'){out("Dimensión (n): "+n+"   |   Vectores (k): "+k+"   |   Rango(A): "+rA,'sys');}
+    out("");menu();return;
+  }
+  if(state==='m2'){
+    const n=dims(vs);if(n===null)return;const A=matrizA(vs);const k=vs.length;
+    const aug=A.map(row=>row.concat(0));
+    out("--- Matriz Aumentada (W=0) ---",'sys');showMatrix(aug);
+    const rA=rank(A);out("\n--- Resultado del Análisis ---",'sys');
+    if(rA===k){out("✅ El sistema tiene SOLO la solución trivial (c1=0, c2=0...).",'ok');
+      out("Resultado: Los vectores son LINEALMENTE INDEPENDIENTES (LI).",'ok');}
+    else{out("♾️ El sistema tiene infinitas soluciones (variables libres).",'warn');
+      out("Resultado: Los vectores son LINEALMENTE DEPENDIENTES (LD).",'warn');}
+    out("");menu();return;
+  }
+  if(state==='m3'){
+    const n=dims(vs);if(n===null)return;const A=matrizA(vs);const rA=rank(A);
+    out("--- Matriz de Vectores (A) Construida ---",'sys');showMatrix(A);
+    out("\n--- Resultado del Análisis ---",'sys');
+    out("Dimensión del espacio (n): "+n,'sys');out("Rango de la matriz (Rank(A)): "+rA,'sys');
+    if(rA===n){out("✅ ¡SÍ GENERAN!",'ok');out("Como Rank(A) == Dimensión, los vectores generan R^"+n+".",'ok');}
+    else{out("❌ NO GENERAN.",'err');out("Como Rank(A) < Dimensión, los vectores NO generan R^"+n+".",'err');}
+    out("");menu();return;
+  }
+  if(state==='m4'){
+    const n=dims(vs);if(n===null)return;const A=matrizA(vs);const k=vs.length;const rA=rank(A);
+    out("--- Matriz de Vectores (A) Construida ---",'sys');showMatrix(A);
+    out("\n--- Resultado del Análisis ---",'sys');
+    out("Dimensión (n): "+n,'sys');out("Num. Vectores (k): "+k,'sys');out("Rango (Rank(A)): "+rA,'sys');
+    if(k===n&&rA===n){out("✅ ¡SÍ ES UNA BASE!",'ok');out(" (Num. Vectores = Dimensión = Rango)",'ok');}
+    else{out("❌ NO ES UNA BASE.",'err');
+      if(k!==n)out("Motivo: El número de vectores ("+k+") no es igual a la dimensión ("+n+").",'err');
+      else out("Motivo: Los vectores son Linealmente Dependientes (Rango < Dimensión).",'err');}
+    out("");menu();return;
+  }
+}
+cmd.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=cmd.value;cmd.value='';echo(v);run(v);}});
+document.addEventListener('click',()=>cmd.focus());
+out("Compilado con éxito. Iniciando ANALIZADOR LINEAL...",'ok');
+out("Ejemplos:  Módulo 2 ->  V1<1,2> V2<2,4>   (LD)   |   V1<1,0> V2<0,1> (LI / base de R^2)",'sys');
+menu();
+</script>
+</body>
+</html>
