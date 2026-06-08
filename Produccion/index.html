@@ -25,6 +25,17 @@
   .inrow .ps{color:#7ee787;font-family:monospace;font-size:13.5px}
   .inrow input{flex:1;background:transparent;border:none;outline:none;color:#fff;
     font-family:'Cascadia Code',monospace;font-size:13.5px}
+  .layout{display:flex;gap:18px;align-items:flex-start;justify-content:center;flex-wrap:wrap;width:100%}
+  .info{width:320px;flex-shrink:0;background:#11151c;border:1px solid #2a3140;border-radius:12px;padding:18px;color:#e6edf3;text-align:left}
+  .info h3{font-size:1.05rem;margin:0 0 8px;color:#fff}
+  .info h4{font-size:.8rem;margin:14px 0 6px;color:#9aa7b8;text-transform:uppercase;letter-spacing:.5px}
+  .info p{font-size:.88rem;color:#c9d4e2;line-height:1.55;margin:0}
+  .info ul{margin:8px 0 0;padding-left:18px}.info li{font-size:.85rem;color:#c9d4e2;line-height:1.5;margin-bottom:4px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}.chips span{font-size:.72rem;background:#1c2230;border:1px solid #2a3140;color:#9aa7b8;border-radius:6px;padding:3px 8px}
+  .doc{display:block;text-align:center;background:#1f6feb;color:#fff;border-radius:8px;padding:9px;font-weight:600;font-size:.9rem;margin-top:8px;text-decoration:none}.doc:hover{filter:brightness(1.1)}
+  .dl{display:block;text-align:center;background:#238636;color:#fff;border-radius:8px;padding:9px;font-weight:600;font-size:.9rem;margin-top:8px;text-decoration:none}.dl:hover{filter:brightness(1.1)}
+  .gh{display:block;text-align:center;background:#161b22;border:1px solid #2a3140;color:#e6edf3;border-radius:8px;padding:8px;font-size:.85rem;margin-top:8px;text-decoration:none}.gh:hover{border-color:#3a4456}
+  .layout > .term,.layout > .win{flex:1 1 560px;max-width:780px;min-width:320px;width:auto}
 </style>
 </head>
 <body>
@@ -33,10 +44,19 @@
     <p>Demo web fiel al proyecto Java de consola · escribe y presiona Enter, igual que en la terminal · <a href="https://portafolio-ten-olive-50.vercel.app/">← Volver al portafolio</a></p>
   </div>
 
+  <div class="layout">
   <div class="term">
     <div class="tbar"><i class="r"></i><i class="y"></i><i class="g"></i><span>java -jar AnalizadorLineal.jar</span></div>
     <div class="screen" id="scr"></div>
     <div class="inrow"><span class="ps" id="ps">&gt;</span><input id="cmd" autocomplete="off" autofocus placeholder="escribe aquí y presiona Enter"></div>
+  </div>
+  <aside class="info">
+    <h3>Acerca del proyecto</h3>
+    <p>Herramienta de <b>consola</b> en Java para álgebra lineal: combinación lineal (Ax=b), dependencia e independencia (LI/LD), conjunto generador (Span) y verificación de bases, mediante <b>eliminación de Gauss</b>.</p>
+    <div class="chips"><span>Java</span><span>Álgebra lineal</span><span>Eliminación de Gauss</span><span>Consola</span></div>
+    <a class="dl" href="https://github.com/Alan20111/Analizador_Lineal/archive/refs/heads/master.zip">⬇ Descargar código (.zip)</a>
+    <a class="gh" href="https://github.com/Alan20111/Analizador_Lineal">&lt;/&gt; Código en GitHub</a>
+  </aside>
   </div>
 
 <script>
